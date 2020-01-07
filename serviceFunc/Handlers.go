@@ -4,9 +4,19 @@ import (
 	"fmt"
 	"github.com/gorilla/securecookie"
 	"github.com/weizhe0422/WebServiceWithLoginAndUpload/Utility"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"regexp"
 )
+
+type Stat interface {
+	Stat() (os.FileInfo, error)
+}
+type Size interface {
+	Size() int64
+}
 
 var cookieHandle = securecookie.New(
 	securecookie.GenerateRandomKey(64),
@@ -21,14 +31,14 @@ func LoginPage(resp http.ResponseWriter, request *http.Request){
 }
 
 func Login(resp http.ResponseWriter, request *http.Request){
-	name := request.FormValue("name")
+	email := request.FormValue("email")
 	password := request.FormValue("password")
 	redirectTarget := "/"
-	log.Println(name,password)
-	if !Utility.IsEmpty(name) && !Utility.IsEmpty(password) {
-		if Utility.IsValidUser(name, password) {
+	log.Println(email,password)
+	if !Utility.IsEmpty(email) && !Utility.IsEmpty(password) {
+		if Utility.IsValidUser(email, password) {
 			log.Println("Login OK!")
-			SetCookie(name, resp)
+			SetCookie(email, resp)
 			redirectTarget = "/welcome"
 		}else{
 			log.Println("Login fail!")
@@ -43,17 +53,56 @@ func Login(resp http.ResponseWriter, request *http.Request){
 
 func Welcome(resp http.ResponseWriter, request *http.Request){
 	userName := GetUserName(request)
+	compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
+	submatch := compile.FindAllStringSubmatch(userName, -1)
+	userName = submatch[0][1]
 	if !Utility.IsEmpty(userName) {
 		indexBody, _ := Utility.LoadFile("templates/index.html")
-		fmt.Fprintf(resp, indexBody, userName)
+		fmt.Fprintf(resp, indexBody, userName, "")
 	}else{
 		http.Redirect(resp, request, "/", http.StatusFound)
 	}
 }
 
-func SetCookie(userName string, resp http.ResponseWriter){
+func Upload(resp http.ResponseWriter, request *http.Request){
+	if request.Method == "POST" {
+		file, head, err := request.FormFile("userfile")
+		defer file.Close()
+		if err != nil {
+			log.Printf("failed to load file: %v",err)
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Println("success to load file")
+
+		content, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Printf("failed to read file: %v",err)
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Println("success to read file")
+
+		err = ioutil.WriteFile(head.Filename, content, os.ModeAppend)
+		if err != nil {
+			log.Printf("failed to get upload file: %v", err)
+		}
+
+		userName := GetUserName(request)
+		compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
+		submatch := compile.FindAllStringSubmatch(userName, -1)
+		userName = submatch[0][1]
+		indexBody, _ := Utility.LoadFile("templates/index.html")
+		if sizeInterface, ok := file.(Size); ok{
+			fmt.Fprintf(resp, indexBody, userName, fmt.Sprintf(`上次上傳資訊： 檔名:%s 檔案大小為：%d`, head.Filename, sizeInterface.Size()))
+		}
+
+	}
+}
+
+func SetCookie(eMail string, resp http.ResponseWriter){
 	mapName := map[string] string{
-		"name": userName,
+		"email": eMail,
 	}
 
 	encode, err := cookieHandle.Encode("cookie", mapName)
@@ -72,7 +121,7 @@ func GetUserName(req *http.Request) (userName string){
 	if err == nil {
 		cookieValue := make(map[string]string)
 		if err = cookieHandle.Decode("cookie", cookie.Value, &cookieValue); err == nil {
-			userName = cookieValue["name"]
+			userName = cookieValue["email"]
 		}
 	}
 	return userName

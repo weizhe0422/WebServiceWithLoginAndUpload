@@ -14,6 +14,7 @@ func main() {
 	router.HandleFunc("/", serviceFunc.LoginPage)
 	router.HandleFunc("/welcome", serviceFunc.Welcome)
 	router.HandleFunc("/login", serviceFunc.Login).Methods("POST")
+	router.HandleFunc("/upload", serviceFunc.Upload)
 
 	http.Handle("/", router)
 	log.Fatal(http.ListenAndServe(":8080", nil))

@@ -2,7 +2,6 @@ package serviceFunc
 
 import (
 	"fmt"
-	"github.com/gorilla/securecookie"
 	"github.com/weizhe0422/WebServiceWithLoginAndUpload/Utility"
 	"io/ioutil"
 	"log"
@@ -17,10 +16,6 @@ type Stat interface {
 type Size interface {
 	Size() int64
 }
-
-var cookieHandle = securecookie.New(
-	securecookie.GenerateRandomKey(64),
-	securecookie.GenerateRandomKey(32))
 
 func LoginPage(resp http.ResponseWriter, request *http.Request){
 	file, err := Utility.LoadFile("templates/login.html")
@@ -38,7 +33,7 @@ func Login(resp http.ResponseWriter, request *http.Request){
 	if !Utility.IsEmpty(email) && !Utility.IsEmpty(password) {
 		if Utility.IsValidUser(email, password) {
 			log.Println("Login OK!")
-			SetCookie(email, resp)
+			Utility.SetCookie(email, resp)
 			redirectTarget = "/welcome"
 		}else{
 			log.Println("Login fail!")
@@ -52,7 +47,11 @@ func Login(resp http.ResponseWriter, request *http.Request){
 }
 
 func Welcome(resp http.ResponseWriter, request *http.Request){
-	userName := GetUserName(request)
+	userName, err := Utility.GetUserName(request)
+	if err != nil {
+		http.Error(resp, "expired!", http.StatusForbidden)
+		fmt.Fprintln(resp, err)
+	}
 	compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
 	submatch := compile.FindAllStringSubmatch(userName, -1)
 	userName = submatch[0][1]
@@ -66,63 +65,44 @@ func Welcome(resp http.ResponseWriter, request *http.Request){
 
 func Upload(resp http.ResponseWriter, request *http.Request){
 	if request.Method == "POST" {
-		file, head, err := request.FormFile("userfile")
-		defer file.Close()
-		if err != nil {
-			log.Printf("failed to load file: %v",err)
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		log.Println("success to load file")
+		request.ParseMultipartForm(10000000)
+		formData := request.MultipartForm
+		files := formData.File["multiplefiles"]
 
-		content, err := ioutil.ReadAll(file)
-		if err != nil {
-			log.Printf("failed to read file: %v",err)
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		log.Println("success to read file")
+		respString := ""
+		for i, _ := range files{
+			file, err := files[i].Open()
+			if err != nil {
+				log.Printf("failed to load file: %v",err)
+				http.Error(resp, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
 
-		err = ioutil.WriteFile(head.Filename, content, os.ModeAppend)
-		if err != nil {
-			log.Printf("failed to get upload file: %v", err)
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				log.Printf("failed to read file: %v",err)
+				http.Error(resp, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = ioutil.WriteFile(files[i].Filename, content, os.ModeAppend)
+			if err != nil {
+				log.Printf("failed to get upload file: %v", err)
+			}
+
+			if sizeInterface, ok := file.(Size); ok{
+				respString = respString + fmt.Sprintf(`檔名:%s 檔案大小為：%d`, files[i].Filename, sizeInterface.Size())+"<br>"
+			}
 		}
 
-		userName := GetUserName(request)
+		userName, err := Utility.GetUserName(request)
+		if err != nil {
+			http.Error(resp, "expired!", http.StatusForbidden)
+		}
 		compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
-		submatch := compile.FindAllStringSubmatch(userName, -1)
-		userName = submatch[0][1]
+		userName = compile.FindAllStringSubmatch(userName, -1)[0][1]
 		indexBody, _ := Utility.LoadFile("templates/index.html")
-		if sizeInterface, ok := file.(Size); ok{
-			fmt.Fprintf(resp, indexBody, userName, fmt.Sprintf(`上次上傳資訊： 檔名:%s 檔案大小為：%d`, head.Filename, sizeInterface.Size()))
-		}
-
+		fmt.Fprintf(resp, indexBody, userName, respString)
 	}
 }
 
-func SetCookie(eMail string, resp http.ResponseWriter){
-	mapName := map[string] string{
-		"email": eMail,
-	}
-
-	encode, err := cookieHandle.Encode("cookie", mapName)
-	if err == nil {
-		cookie := &http.Cookie{
-			Name:       "cookie",
-			Value:      encode,
-			Path:       "/",
-		}
-		http.SetCookie(resp, cookie)
-	}
-}
-
-func GetUserName(req *http.Request) (userName string){
-	cookie, err := req.Cookie("cookie")
-	if err == nil {
-		cookieValue := make(map[string]string)
-		if err = cookieHandle.Decode("cookie", cookie.Value, &cookieValue); err == nil {
-			userName = cookieValue["email"]
-		}
-	}
-	return userName
-}

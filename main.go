@@ -15,6 +15,7 @@ func main() {
 	router.HandleFunc("/welcome", serviceFunc.Welcome)
 	router.HandleFunc("/login", serviceFunc.Login).Methods("POST")
 	router.HandleFunc("/upload", serviceFunc.Upload)
+	router.HandleFunc("/AWSupload", serviceFunc.AWSUpload)
 
 	http.Handle("/", router)
 	log.Fatal(http.ListenAndServe(":8080", nil))

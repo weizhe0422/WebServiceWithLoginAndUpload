@@ -2,6 +2,10 @@ package serviceFunc
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/weizhe0422/WebServiceWithLoginAndUpload/Utility"
 	"io/ioutil"
 	"log"
@@ -106,3 +110,54 @@ func Upload(resp http.ResponseWriter, request *http.Request){
 	}
 }
 
+func AWSUpload(resp http.ResponseWriter, request *http.Request){
+	if request.Method == "POST" {
+		request.ParseMultipartForm(10000000)
+		formData := request.MultipartForm
+		files := formData.File["multiplefiles"]
+
+		respString := ""
+		for i, _ := range files{
+			file, err := files[i].Open()
+			if err != nil {
+				log.Printf("failed to load file: %v",err)
+				http.Error(resp, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			config := aws.Config{
+				Region: aws.String("ap-northeast-1"),
+				Credentials: credentials.AnonymousCredentials,
+			}
+			sess, _ := session.NewSession(&config)
+			svc := s3manager.NewUploader(sess)
+			fmt.Println("uploading to S3...")
+			upload, err := svc.Upload(&s3manager.UploadInput{
+				Bucket: aws.String("weizheuploadservice"),
+				Key:    aws.String(files[i].Filename),
+				Body:   file,
+			})
+			if err != nil {
+				log.Println("failed to upload to S3: %v", err)
+			}
+			log.Println("location:", upload.Location)
+			log.Println("UploadID:", upload.UploadID)
+			log.Println("VersionID:", upload.VersionID)
+
+			if sizeInterface, ok := file.(Size); ok{
+				respString = respString + fmt.Sprintf(`檔名:%s 檔案大小為：%d `, files[i].Filename, sizeInterface.Size())+"<br>"
+				respString = respString + fmt.Sprintf(`AWS位置: %s `, upload.Location)+"<br>"
+			}
+		}
+
+		userName, err := Utility.GetUserName(request)
+		if err != nil {
+			http.Error(resp, "expired!", http.StatusForbidden)
+		}
+		compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
+		userName = compile.FindAllStringSubmatch(userName, -1)[0][1]
+		indexBody, _ := Utility.LoadFile("templates/index.html")
+		fmt.Fprintf(resp, indexBody, userName, respString)
+	}
+}

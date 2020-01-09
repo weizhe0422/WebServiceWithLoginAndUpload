@@ -17,10 +17,25 @@
             </div>
         </div>
         <div class="form-group">
-            <div class="col-sm-offset-2 col-sm-10">
-                <button type="SUBMIT" class="btn btn-primary" value="upload">上傳</button>
+            <div class="col-sm-offset-2 col-sm-10" >
+                <button type="SUBMIT" class="btn btn-primary" value="upload" >上傳</button>
             </div>
         </div>
+    </form>
+    <form class="form-horizontal" role="form" method="POST" enctype="multipart/form-data" action="/AWSupload">
+        <div class="form-group">
+            <label class="control-label col-sm-2" for="uploadFile">選擇檔案:</label>
+            <div class="col-sm-10">
+                <input type="FILE" id="multiplefiles" name="multiplefiles" multiple="multiple"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-10" >
+                <button type="SUBMIT" class="btn btn-warning" value="upload" >上傳AWS S3空間</button>
+            </div>
+        </div>
+    </form>
+    <form class="form-horizontal" role="form" method="POST" enctype="multipart/form-data">
         <div class="panel panel-success">
             <div class="panel-heading">
                 <h3 class="panel-title">上傳結果</h3>
@@ -31,8 +46,6 @@
         </div>
     </form>
 </div>
-
-
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>

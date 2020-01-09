@@ -12,7 +12,8 @@
   * Already have existing web pages with web services function call 
   * Use cookie to support Single-Sign-on, you can upload file within 1 minutes without login again
   * Support multiple files upload function, and get the last result before next upload request
-    
+  * Support upload file to server side or AWS S3
+  
  ### Start up
   1. change disk to project folder
   2. type `go run main.go` in terminal to launch

@@ -8,6 +8,11 @@
  ### Installation
  * `go get github.com/weizhe0422/WebServiceWithLoginAndUpload.git`
  
+ ### Features
+  * Already have existing web pages with web services function call 
+  * Use cookie to support Single-Sign-on, you can upload file within 1 minutes without login again
+  * Support multiple files upload function, and get the last result before next upload request
+    
  ### Start up
   1. change disk to project folder
   2. type `go run main.go` in terminal to launch
@@ -19,6 +24,6 @@
   6. Multi-select target and press UPLOAD button to upload files
   <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/Multi-select-files.png" width="412" height="137" alt="Multi-select-files">
   7. You will get the last upload information, and also can do the next upload action
-  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/UploadResult.png" width="610" height="267" alt="UploadResult">
-  
-  
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/UploadResult_S3.png" width="640" height="344" alt="UploadResult_S3">
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/UploadResult_Server.png" width="624" height="322" alt="UploadResult_Server">
+ 

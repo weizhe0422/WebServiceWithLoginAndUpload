@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 )
 
 type Stat interface {
@@ -29,6 +30,7 @@ type Size interface {
 
 const (
 	fileChunk = 10 * 1024 * 1024
+	maxUploadSize = 100 * 1024 * 1024
 	maxRetries = 3
 )
 
@@ -79,13 +81,22 @@ func Welcome(resp http.ResponseWriter, request *http.Request){
 }
 
 func Upload(resp http.ResponseWriter, request *http.Request){
+	userName, err := Utility.GetUserName(request)
+	if err != nil {
+		http.Error(resp, "expired!", http.StatusForbidden)
+	}
+	compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
+	userName = compile.FindAllStringSubmatch(userName, -1)[0][1]
+	indexBody, _ := Utility.LoadFile("templates/index.html")
+
+
 	reader, err := request.MultipartReader()
 	if err != nil {
 		fmt.Fprintln(resp, err)
 		return
 	}
 	values := make(map[string][]string, 0)
-	maxValueBytes := int64(10000000)
+	maxValueBytes := int64(maxUploadSize)
 	respString:=""
 	for {
 		part, err := reader.NextPart()
@@ -131,15 +142,11 @@ func Upload(resp http.ResponseWriter, request *http.Request){
 		respString = respString + fmt.Sprintf(`檔名:%s 檔案大小為：%d bytes`, fileName, fileSize)+"<br>"
 	}
 
-	userName, err := Utility.GetUserName(request)
-	if err != nil {
-		http.Error(resp, "expired!", http.StatusForbidden)
+	if request.ContentLength > maxUploadSize {
+		fmt.Fprintf(resp, indexBody, userName, "", "只能上傳小於"+strconv.Itoa(maxUploadSize)+" bytes檔案")
+	}else{
+		fmt.Fprintf(resp, indexBody, userName, respString, "Complete upload!")
 	}
-	compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
-	userName = compile.FindAllStringSubmatch(userName, -1)[0][1]
-	indexBody, _ := Utility.LoadFile("templates/index.html")
-	fmt.Fprintf(resp, indexBody, userName, respString, "Complete upload!")
-
 }
 func AWSUpload(resp http.ResponseWriter, request *http.Request){
 	userName, err := Utility.GetUserName(request)

@@ -55,7 +55,7 @@ func Login(resp http.ResponseWriter, request *http.Request){
 		}else{
 			log.Println("Login fail!")
 			//TODO Wait to implement register service
-			redirectTarget = "/register"
+			redirectTarget = "/"
 		}
 	}else{
 		log.Println("Empty!")

@@ -112,7 +112,7 @@ func Upload(resp http.ResponseWriter, request *http.Request){
 		var b bytes.Buffer
 
 		if fileName == "" {
-			n, err := io.CopyN(&b, part, maxValueBytes)
+			n, err := io.CopyN(&b, part, fileChunk)
 			if err != nil && err != io.EOF {
 				fmt.Fprintln(resp, err)
 				return

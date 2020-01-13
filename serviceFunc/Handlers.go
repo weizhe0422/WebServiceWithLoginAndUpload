@@ -2,6 +2,7 @@ package serviceFunc
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -17,8 +18,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type Stat interface {
@@ -28,10 +32,17 @@ type Size interface {
 	Size() int64
 }
 
+type OAuthAccessResponse struct {
+	AccessToken string `json:"access_token"`
+}
+//https://github.com/login/oauth/authorize?client_id=15bd57e1c2d0f9bea21b&redirect_uri=http://localhost:8080/oauth/redirect
+//https://github.com/login/oauth/access_token?client_id=15bd57e1c2d0f9bea21b&client_secret=6fc726e8ebc70093e6d116ea3f366e914402eba2&code=b1f7e1e4f754341c715b
 const (
 	fileChunk = 10 * 1024 * 1024
 	maxUploadSize = 100 * 1024 * 1024
 	maxRetries = 3
+	clientID = "15bd57e1c2d0f9bea21b"
+	clientSecret = "6fc726e8ebc70093e6d116ea3f366e914402eba2"
 )
 
 func LoginPage(resp http.ResponseWriter, request *http.Request){
@@ -42,7 +53,22 @@ func LoginPage(resp http.ResponseWriter, request *http.Request){
 	fmt.Fprintf(resp, file)
 }
 
-func Login(resp http.ResponseWriter, request *http.Request){
+//https://github.com/login/oauth/authorize?client_id=15bd57e1c2d0f9bea21b&redirect_uri=http://localhost:8080/oauth/redirect
+func LoginWithOAUTH(resp http.ResponseWriter, request *http.Request){
+	email := request.FormValue("email")
+	log.Println(email)
+	redirectTarget:="/"
+	if !Utility.IsEmpty(email) {
+		Utility.SetCookie(email, resp)
+		redirectTarget = fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:8080/oauth/redirect", clientID)
+		log.Print("reqURL:",redirectTarget)
+	}else{
+		log.Println("Empty!")
+	}
+	http.Redirect(resp, request, redirectTarget, http.StatusFound)
+}
+
+func LoginWithSvrVerify(resp http.ResponseWriter, request *http.Request){
 	email := request.FormValue("email")
 	password := request.FormValue("password")
 	redirectTarget := "/"
@@ -100,15 +126,20 @@ func Register(resp http.ResponseWriter, request *http.Request){
 
 func Welcome(resp http.ResponseWriter, request *http.Request){
 	userName, err := Utility.GetUserName(request)
+	if userName == ""{
+		userName = "USER" + strconv.Itoa(int(time.Now().Unix()))
+	}
 	if err != nil {
 		http.Error(resp, "expired!", http.StatusForbidden)
 		fmt.Fprintln(resp, err)
 	}
-	compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
-	submatch := compile.FindAllStringSubmatch(userName, -1)
-	userName = submatch[0][1]
+	if strings.Index(userName,"@") > 0{
+		compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
+		submatch := compile.FindAllStringSubmatch(userName, -1)
+		userName = submatch[0][1]
+	}
 	if !Utility.IsEmpty(userName) {
-		indexBody, _ := Utility.LoadFile("templates/index.html")
+		indexBody, _ := Utility.LoadFile("templates/upload.html")
 		fmt.Fprintf(resp, indexBody, userName, "" , "")
 	}else{
 		http.Redirect(resp, request, "/", http.StatusFound)
@@ -327,7 +358,7 @@ func X_AWSUpload(resp http.ResponseWriter, request *http.Request){
 	}
 	compile := regexp.MustCompile(`(\w+([-+.]\w+)*)@\w+([-.]\w+)*\.\w+([-.]\w+)*`)
 	userName = compile.FindAllStringSubmatch(userName, -1)[0][1]
-	indexBody, _ := Utility.LoadFile("templates/index.html")
+	indexBody, _ := Utility.LoadFile("templates/upload.html")
 
 	if request.Method == "POST" {
 		flusher.Flush()
@@ -415,4 +446,47 @@ func completeMultipartUpload(svc *s3.S3, resp *s3.CreateMultipartUploadOutput, c
 		},
 	}
 	return svc.CompleteMultipartUpload(completeInput)
+}
+
+func OAuthLogin(resp http.ResponseWriter, request *http.Request){
+	log.Print("OAuthLogin START")
+	code := request.FormValue("code")
+	log.Print("OAuthLogin code:",code)
+	reqURL := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)
+	log.Print("reqURL:",reqURL)
+	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
+	}
+	// We set this header since we want the response
+	// as JSON
+	req.Header.Set("accept", "application/json")
+
+	httpClient := http.Client{}
+
+	// Send out the HTTP request
+	res, err := httpClient.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v", err)
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
+	defer res.Body.Close()
+
+	// Parse the request body into the `OAuthAccessResponse` struct
+	log.Print("OAUTHRESULT:",res.Body)
+	var t OAuthAccessResponse
+	if err := json.NewDecoder(res.Body).Decode(&t); err != nil {
+		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
+	}
+
+	if !reflect.DeepEqual(t, OAuthAccessResponse{}) {
+		username, _ := Utility.GetUserName(request)
+		log.Println(username)
+		Utility.SetCookie(username, resp)
+		http.Redirect(resp, request, "/welcome", http.StatusFound)
+	}else{
+		http.Redirect(resp, request, "/", http.StatusFound)
+	}
 }

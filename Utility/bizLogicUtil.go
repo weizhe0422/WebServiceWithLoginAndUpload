@@ -1,18 +1,21 @@
 package Utility
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"github.com/gorilla/securecookie"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
+
+type User struct {
+	EMAIL string "bson:`email`"
+	PASSWORD string "bson:`password`"
+}
 
 var cookieHandle = securecookie.New(
 	securecookie.GenerateRandomKey(64),
@@ -23,42 +26,74 @@ func getMongoDB() (*mongo.Client, error) {
 	return mongo.Connect(ctx, options.Client().ApplyURI("mongodb://127.0.0.1:27017/"))
 }
 
-func IsValidUser(name string, password string) bool {
-	/*dbUtil, err := getMongoDB()
+func InsertUserInfo(name string, password string) bool{
+	dbUtil, err := getMongoDB()
 	if err != nil {
 		log.Printf("failed to connect to mongodb: %v", err)
 		return false
 	}
-	collection := dbUtil.Database("test").Collection("users")
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	cur, err := collection.Find(ctx, bson.M{})
-	if err != nil { log.Fatal("failed", err) }
-	defer cur.Close(ctx)
-
-	for cur.Next(ctx) {
-		log.Println("start to print data")
-		var result bson.M
-		err := cur.Decode(&result)
-		if err != nil { log.Fatal(err) }
-		// do something with result....
-		log.Println(result)
-	}
-	log.Println("end to print data")*/
-
-	_name:=strings.ToUpper(name)
-
-	file, err := os.Open("Account.txt")
+	err = dbUtil.Ping(context.TODO(), nil)
 	if err != nil {
-		log.Fatalf("failed to access acount info: %v", err)
+		log.Printf("failed to ping mongo: %v", err)
+		return false
 	}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan(){
-		log.Println(scanner.Text())
-		if scanner.Text() == fmt.Sprintf("ACCOUNT=%s|PASSWORD=%s",_name, password){
-			return true
-		}
+	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	collection := dbUtil.Database("test").Collection("users")
+	record, err := collection.InsertOne(ctx, bson.M{"email": strings.ToUpper(name), "password": password})
+	if err != nil {
+		log.Printf("failed to insert user info: %v", err)
+		return false
 	}
-	return false
+	log.Printf("ok to insert user info, record id: %v", record.InsertedID)
+	return true
+}
+
+func ChkIsUserExist(name string) bool{
+	dbUtil, err := getMongoDB()
+	if err != nil {
+		log.Printf("failed to connect to mongodb: %v", err)
+		return false
+	}
+	err = dbUtil.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Printf("failed to ping mongo: %v", err)
+		return false
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	collection := dbUtil.Database("test").Collection("users")
+	filter := bson.M{"email":strings.ToUpper(name)}
+	err = collection.FindOne(ctx, filter).Decode(&User{})
+	if err != nil {
+		log.Printf("failed to find user record: %v", err)
+		return false
+	}
+	log.Println("ok to find the user info")
+	return true
+}
+
+func IsValidUser(name string, password string) bool {
+	dbUtil, err := getMongoDB()
+	if err != nil {
+		log.Printf("failed to connect to mongodb: %v", err)
+		return false
+	}
+	err = dbUtil.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Printf("failed to ping mongo: %v", err)
+		return false
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	collection := dbUtil.Database("test").Collection("users")
+	filter := bson.M{"email":strings.ToUpper(name),"password":password}
+	err = collection.FindOne(ctx, filter).Decode(&User{})
+	if err != nil {
+		log.Printf("failed to find user record: %v", err)
+		return false
+	}
+	log.Println("ok to find the user info")
+	return true
 }
 
 

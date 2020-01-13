@@ -23,12 +23,12 @@
   4. use web browser and type `http://localhost:8080`
   5. Input E-Mail and password to log in
   5.1 If the E-Mail and password is valid, then you can go through to upload web page
-  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/Login.png" width="920" height="150" alt="Login">
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/develop/img/Login.png" width="920" height="150" alt="Login">
   5.2 If invalid to find E-mail and password, then you need to registration page to registered.
-  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/register.png" width="518" height="582" alt="Login">
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/develop/img/register.png" width="518" height="582" alt="Login">
   6. Multi-select target and press UPLOAD button to upload files
-  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/Multi-select-files.png" width="406" height="220" alt="Multi-select-files">
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/develop/img/Multi-select-files.png" width="406" height="220" alt="Multi-select-files">
   7. You will get the last upload information, and also can do the next upload action
-  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/UploadResult_S3.png" width="627" height="222" alt="UploadResult_S3">
-  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/master/img/UploadResult_Server.png" width="616" height="183" alt="UploadResult_Server">
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/develop/img/UploadResult_S3.png" width="627" height="222" alt="UploadResult_S3">
+  <img src="https://github.com/weizhe0422/WebServiceWithLoginAndUpload/blob/develop/img/UploadResult_Server.png" width="616" height="183" alt="UploadResult_Server">
  

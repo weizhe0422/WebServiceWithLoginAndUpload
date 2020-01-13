@@ -54,9 +54,44 @@ func Login(resp http.ResponseWriter, request *http.Request){
 			redirectTarget = "/welcome"
 		}else{
 			log.Println("Login fail!")
-			//TODO Wait to implement register service
-			redirectTarget = "/"
+			redirectTarget = "/registerPage"
 		}
+	}else{
+		log.Println("Empty!")
+	}
+	http.Redirect(resp, request, redirectTarget, http.StatusFound)
+}
+
+func RegisterPage(resp http.ResponseWriter, request *http.Request){
+	log.Println("start to load register page")
+	file, err := Utility.LoadFile("templates/register.html")
+	if err != nil{
+		log.Printf("failed to load register templates: %v", err)
+	}
+	fmt.Fprintf(resp, file)
+	log.Println("ok to load register page")
+}
+
+func Register(resp http.ResponseWriter, request *http.Request){
+	email := request.FormValue("email")
+	password := request.FormValue("password")
+	redirectTarget := "/"
+	log.Println(email,password)
+	if !Utility.IsEmpty(email) && !Utility.IsEmpty(password) {
+		if !Utility.ChkIsUserExist(email){
+			if Utility.InsertUserInfo(email, password) {
+				log.Println("insert user info ok!")
+				redirectTarget = "/"
+			}else{
+				log.Println("empty info ")
+				redirectTarget = "/register"
+			}
+		}else{
+			log.Printf("already has this user info!")
+			indexBody, _ := Utility.LoadFile("templates/register.html")
+			fmt.Fprintf(resp, indexBody, "already has this user info!")
+		}
+
 	}else{
 		log.Println("Empty!")
 	}
@@ -112,7 +147,7 @@ func Upload(resp http.ResponseWriter, request *http.Request){
 		var b bytes.Buffer
 
 		if fileName == "" {
-			n, err := io.CopyN(&b, part, maxValueBytes)
+			n, err := io.CopyN(&b, part, fileChunk)
 			if err != nil && err != io.EOF {
 				fmt.Fprintln(resp, err)
 				return

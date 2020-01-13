@@ -14,6 +14,8 @@ func main() {
 	router.HandleFunc("/", serviceFunc.LoginPage)
 	router.HandleFunc("/welcome", serviceFunc.Welcome)
 	router.HandleFunc("/login", serviceFunc.Login).Methods("POST")
+	router.HandleFunc("/registerPage", serviceFunc.RegisterPage)
+	router.HandleFunc("/register", serviceFunc.Register)
 	router.HandleFunc("/upload", serviceFunc.Upload)
 	router.HandleFunc("/AWSupload", serviceFunc.AWSUpload)
 

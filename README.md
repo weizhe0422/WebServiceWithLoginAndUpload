@@ -15,6 +15,7 @@
   * Support upload file to server side or AWS S3
   * Support upload big file to server side or AWS S3, but less than 100MB
   * Use Mongo to save user information
+  * Support Github OAuth authorizing.
   
  ### Start up
   1. change disk to project folder

@@ -18,7 +18,8 @@
   
  ### Start up
   1. change disk to project folder
-  2. `docker load < /dockerImg/mongodb.tar` to load mongo docker image
+  2. Download mongo docker image, and type `docker load < /dockerImg/mongodb.tar` to load into.
+    Dock image: https://drive.google.com/file/d/1pMvN7ZtE_A-7VWdu-N1vX7zD6bqxQnKp/view
   3. type `go run main.go` in terminal to launch
   4. use web browser and type `http://localhost:8080`
   5. Input E-Mail and password to log in
